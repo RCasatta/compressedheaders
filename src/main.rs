@@ -28,6 +28,7 @@ fn main() {
 
     let genesis_block_hash = String::from("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");  //genesis hash
     let mut block_hash : String = genesis_block_hash;
+    let mut last_block : usize = 0;
 
     let boxed_block_headers  = Vec::with_capacity(1000000) ;
     let counter = Arc::new(Mutex::new(boxed_block_headers));
@@ -45,8 +46,8 @@ fn main() {
         //println!("{:?}", block_header_rpc_response);
         let block_header_rpc : bitcoin::rpc::BlockHeaderRpc = block_header_rpc_response.result;
         let height = block_header_rpc.height.clone() as usize;
-        if height%1000==0 {
-            println!("Reached block {} with hash {} elapsed {}", height, block_hash, start.elapsed().as_secs());
+        if last_block==0 && height%1000==0 {
+            println!("Block #{} with hash {} elapsed {} seconds", height, block_hash, start.elapsed().as_secs());
         }
 
         let block_hash_option = block_header_rpc.nextblockhash.clone();
@@ -69,9 +70,11 @@ fn main() {
                     false
                 },
                 None => {
-                    println!("Last block height {} hash {}, going to sleep for a while", height, block_hash);
-                    block_hash = block_headers[height - 10].unwrap().hash();
-                    println!("restarting from hash {} (10 blocks ago)", block_hash);
+                    if height != last_block {
+                        println!("Block #{} with hash {}", height, block_hash );
+                    }
+                    last_block = height;
+                    block_hash = block_headers[height - 144].unwrap().hash();   //going back 144 blocks to support reorgs one day long
 
                     true
                 }
@@ -79,7 +82,7 @@ fn main() {
         }  //releasing lock
 
         if sleep {
-            thread::sleep(Duration::from_secs(10));
+            thread::sleep(Duration::from_secs(60));
         }
     }
 
