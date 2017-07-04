@@ -29,7 +29,7 @@ fn main() {
     let genesis_block_hash = String::from("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");  //genesis hash
     let mut block_hash : String = genesis_block_hash;
 
-    let mut boxed_block_headers  = Vec::with_capacity(1000000) ;
+    let boxed_block_headers  = Vec::with_capacity(1000000) ;
     let counter = Arc::new(Mutex::new(boxed_block_headers));
 
     let cloned_counter = counter.clone();
@@ -50,30 +50,37 @@ fn main() {
         }
 
         let block_hash_option = block_header_rpc.nextblockhash.clone();
+        let sleep;
 
+        {
+            let mut block_headers = second_cloned_counter.lock().unwrap();
+            sleep = match block_hash_option {
+                Some(val) => {
+                    block_hash = val;
 
-        let mut block_headers = second_cloned_counter.lock().unwrap();
-        match block_hash_option {
-            Some(val) => {
-                block_hash = val;
+                    let block_header = BlockHeader::from_block_header_rpc(block_header_rpc);
 
-                let block_header = BlockHeader::from_block_header_rpc(block_header_rpc);
+                    while block_headers.len() < height + 1 {
+                        block_headers.push(None);
+                    }
 
-                while block_headers.len() < height + 1 {
-                    block_headers.push(None);
+                    block_headers[height] = Some(block_header);
+
+                    false
+                },
+                None => {
+                    println!("Last block height {} hash {}, going to sleep for a while", height, block_hash);
+                    block_hash = block_headers[height - 10].unwrap().hash();
+                    println!("restarting from hash {} (10 blocks ago)", block_hash);
+
+                    true
                 }
+            };
+        }  //releasing lock
 
-                block_headers[height]=Some(block_header);
-            },
-            None => {
-                println!("Last block height {} hash {}, going to sleep for a while", height, block_hash);
-                thread::sleep(Duration::from_secs(10));
-                block_hash = block_headers[height-10].unwrap().hash();
-                println!("restarting from hash {} (10 blocks ago)", block_hash);
-            }
+        if sleep {
+            thread::sleep(Duration::from_secs(10));
         }
-        //second_cloned_counter.unlock();
-        //println!();
     }
 
 }

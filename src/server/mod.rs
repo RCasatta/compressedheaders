@@ -4,7 +4,6 @@ use futures;
 use hyper::header::{ContentLength,ContentType};
 use hyper::server::{Http, Request, Response, Service};
 use bitcoin::header::BlockHeader;
-use hyper::Error;
 use hyper::StatusCode;
 
 #[derive(Clone)]
@@ -34,10 +33,6 @@ pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>) {
     })).unwrap();
     server.run().unwrap();
 }
-
-
-const PHRASE_1: &'static str = "Not Found";
-const PHRASE_2: &'static str = "Invalid number";
 
 impl Service for HelloWorld {
     type Request = Request;
@@ -76,13 +71,12 @@ fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<
     if end > locked_block_headers.len() {
         Response::new().with_status(StatusCode::NotFound)
     } else {
+        println!("Returning compressed headers from {} to {}",start,end);
         let mut vec : Vec<u8> = Vec::new();
         vec.extend(locked_block_headers[start].unwrap().as_bytes().into_iter() );
         for i in start+1..end {
-            println!("{}",i);
             vec.extend(locked_block_headers[i].unwrap().as_compressed_bytes().into_iter() );
         }
-        let body = String::from(vec.len().to_string());
         Response::new()
             .with_header(ContentType::octet_stream())
             .with_header(ContentLength(vec.len() as u64))
@@ -117,6 +111,7 @@ fn validate_req(_req: Request ) -> ParsedRequest {
     }
 }
 
+#[allow(unused_variables)]
 fn parse_uri(num : &str) -> Option<usize> {
     match num.parse::<usize>() {
         Ok(n) => Some(n),
