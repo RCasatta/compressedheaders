@@ -41,12 +41,7 @@ impl Service for HelloWorld {
     type Future = futures::future::FutureResult<Self::Response, Self::Error>;
 
     fn call(&self, _req: Request) -> Self::Future {
-        println!("{:?}",_req);
-
         let parsed_request = validate_req(_req);
-
-        println!("x = {:?}", parsed_request);
-
         let response = match (parsed_request.request_type, parsed_request.chunk_number) {
             (RequestType::Invalid,_) => Response::new().with_status(StatusCode::NotFound),
             (_,None) => Response::new().with_status(StatusCode::BadRequest),
@@ -55,8 +50,6 @@ impl Service for HelloWorld {
 
         futures::future::ok(response)
     }
-
-
 }
 
 fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>) -> Response {
@@ -71,7 +64,13 @@ fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<
     if end > locked_block_headers.len() {
         Response::new().with_status(StatusCode::NotFound)
     } else {
-        println!("Returning compressed headers from {} to {}",start,end);
+        match parsed_request.request_type {
+            RequestType::_1 =>
+                println!("Request type: _1 chunk: {} -> Returning header of block {}", chunk_number, start),
+            _ =>
+                println!("Request type: {:?} chunk: {} -> Returning compressed headers from {} to {}",parsed_request.request_type, chunk_number, start,end-1),
+        }
+
         let mut vec : Vec<u8> = Vec::new();
         vec.extend(locked_block_headers[start].unwrap().as_bytes().into_iter() );
         for i in start+1..end {

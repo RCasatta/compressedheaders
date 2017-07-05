@@ -23,8 +23,9 @@ use bitcoin::rpc::BlockHeaderRpcResponse;
 fn main() {
     let start = Instant::now();
 
-    let username = env::args().nth(1).unwrap();
-    let password = Some(env::args().nth(2).unwrap());
+    let host = env::args().nth(1).unwrap();
+    let username = env::args().nth(2).unwrap();
+    let password = Some(env::args().nth(3).unwrap());
 
     let genesis_block_hash = String::from("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");  //genesis hash
     let mut block_hash : String = genesis_block_hash;
@@ -39,10 +40,8 @@ fn main() {
         server::start(cloned_counter);
     });
 
-
-
     loop {
-        let block_header_rpc_response : BlockHeaderRpcResponse = bitcoin::rpc::get_block_header(block_hash.clone(), username.clone(), password.clone()).unwrap();
+        let block_header_rpc_response : BlockHeaderRpcResponse = bitcoin::rpc::get_block_header(block_hash.clone(), host.clone(), username.clone(), password.clone()).unwrap();
         //println!("{:?}", block_header_rpc_response);
         let block_header_rpc : bitcoin::rpc::BlockHeaderRpc = block_header_rpc_response.result;
         let height = block_header_rpc.height.clone() as usize;
@@ -58,13 +57,10 @@ fn main() {
             sleep = match block_hash_option {
                 Some(val) => {
                     block_hash = val;
-
                     let block_header = BlockHeader::from_block_header_rpc(block_header_rpc);
-
                     while block_headers.len() < height + 1 {
                         block_headers.push(None);
                     }
-
                     block_headers[height] = Some(block_header);
 
                     false

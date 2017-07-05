@@ -36,7 +36,7 @@ pub struct BlockHeaderRpc {
 }
 
 
-pub fn get_block_header(block_hash : String, username : String, password : Option<String>) -> Result<BlockHeaderRpcResponse, Error> {
+pub fn get_block_header(block_hash : String, host : String, username : String, password : Option<String>) -> Result<BlockHeaderRpcResponse, Error> {
     let auth = Authorization(Basic {
         username: username,
         password: password
@@ -44,7 +44,7 @@ pub fn get_block_header(block_hash : String, username : String, password : Optio
     let mut core = Core::new()?;
     let client = Client::new(&core.handle());
     let request_body_string: String = format!("{{\"jsonrpc\":\"1.0\",\"id\":\"{}\",\"method\":\"{}\",\"params\":[\"{}\"]}}", 0, "getblockheader", block_hash);
-    let mut req : Request = Request::new(Method::Post, "http://localhost:8332".parse().unwrap());
+    let mut req : Request = Request::new(Method::Post, host.parse().unwrap());
     req.set_body(Body::from(request_body_string));
     req.headers_mut().set(auth);
 
