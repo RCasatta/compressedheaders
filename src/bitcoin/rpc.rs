@@ -1,11 +1,7 @@
 
-use hyper::Client;
-use hyper::Request;
-use hyper::Error;
-use tokio_core::reactor::Core;
+use hyper::{Client, Request, Error, Method, Body};
 use hyper::header::{Authorization, Basic};
-use hyper::Method;
-use hyper::Body;
+use tokio_core::reactor::Core;
 use futures::{Future, Stream};
 use serde_json;
 use std::str;
@@ -55,12 +51,19 @@ pub fn get_block_header(block_hash : String, host : String, username : String, p
         // read into a String, so that you don't need to do the conversion.
         res.body().concat2()
     });
-    let work_result = core.run(work).unwrap();
+
+    let work_result = core.run(work)?;  //this throw on mac
 
     //println!("work_result {:?}", work_result);
-    let utf8 = str::from_utf8(&work_result).unwrap();
+    let utf8 = str::from_utf8(&work_result)?;
+
     //println!("GET: {}", utf8);
-    let block_header_rpc_response = serde_json::from_str(utf8).unwrap();
+    let block_header_rpc_response = match serde_json::from_str(utf8) {
+        Err(e) => return Err(Error::Io(e.into())),
+        Ok(f) => f,
+    };
+
+    //let block_header_rpc_response = serde_json::from_str(utf8)?;
 
     Ok(block_header_rpc_response)
 }

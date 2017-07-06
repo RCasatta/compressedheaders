@@ -15,10 +15,7 @@ use std::env;
 use std::thread;
 use std::time::{Duration, Instant};
 use std::sync::{Mutex, Arc};
-
 use bitcoin::header::BlockHeader;
-use bitcoin::rpc::BlockHeaderRpcResponse;
-
 
 fn main() {
     let start = Instant::now();
@@ -41,45 +38,56 @@ fn main() {
     });
 
     loop {
-        let block_header_rpc_response : BlockHeaderRpcResponse = bitcoin::rpc::get_block_header(block_hash.clone(), host.clone(), username.clone(), password.clone()).unwrap();
-        //println!("{:?}", block_header_rpc_response);
-        let block_header_rpc : bitcoin::rpc::BlockHeaderRpc = block_header_rpc_response.result;
-        let height = block_header_rpc.height.clone() as usize;
-        if last_block==0 && height%1000==0 {
-            println!("Block #{} with hash {} elapsed {} seconds", height, block_hash, start.elapsed().as_secs());
-        }
-
-        let block_hash_option = block_header_rpc.nextblockhash.clone();
-        let sleep;
-
-        {
-            let mut block_headers = second_cloned_counter.lock().unwrap();
-            sleep = match block_hash_option {
-                Some(val) => {
-                    block_hash = val;
-                    let block_header = BlockHeader::from_block_header_rpc(block_header_rpc);
-                    while block_headers.len() < height + 1 {
-                        block_headers.push(None);
-                    }
-                    block_headers[height] = Some(block_header);
-
-                    false
-                },
-                None => {
-                    if height != last_block {
-                        println!("Block #{} with hash {}", height, block_hash );
-                    }
-                    last_block = height;
-                    block_hash = block_headers[height - 144].unwrap().hash();   //going back 144 blocks to support reorgs one day long
-
-                    true
+        let r = bitcoin::rpc::get_block_header(block_hash.clone(), host.clone(), username.clone(), password.clone());
+        match r {
+            Ok(block_header_rpc_response) => {
+                //let block_header_rpc_response : BlockHeaderRpcResponse = r.unwrap();
+                //println!("{:?}", block_header_rpc_response);
+                let block_header_rpc : bitcoin::rpc::BlockHeaderRpc = block_header_rpc_response.result;
+                let height = block_header_rpc.height.clone() as usize;
+                if last_block==0 && height%1000==0 {
+                    println!("Block #{} with hash {} elapsed {} seconds", height, block_hash, start.elapsed().as_secs());
                 }
-            };
-        }  //releasing lock
 
-        if sleep {
-            thread::sleep(Duration::from_secs(60));
+                let block_hash_option = block_header_rpc.nextblockhash.clone();
+                let sleep;
+
+                {
+                    let mut block_headers = second_cloned_counter.lock().unwrap();
+                    sleep = match block_hash_option {
+                        Some(val) => {
+                            block_hash = val;
+                            let block_header = BlockHeader::from_block_header_rpc(block_header_rpc);
+                            while block_headers.len() < height + 1 {
+                                block_headers.push(None);
+                            }
+                            block_headers[height] = Some(block_header);
+
+                            false
+                        },
+                        None => {
+                            if height != last_block {
+                                println!("Block #{} with hash {}", height, block_hash );
+                            }
+                            last_block = height;
+                            block_hash = block_headers[height - 144].unwrap().hash();   //going back 144 blocks to support reorgs one day long
+
+                            true
+                        }
+                    };
+                }  //releasing lock
+
+                if sleep {
+                    thread::sleep(Duration::from_secs(60));
+                }
+            },
+            Err(e) =>{
+                println!("{:?}",e);
+                thread::sleep(Duration::from_secs(30));
+            }
         }
+
+
     }
 
 }
