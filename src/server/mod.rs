@@ -90,7 +90,7 @@ fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<
 fn validate_req(_req: Request ) -> ParsedRequest {
     let uri_path = _req.uri().path();
 
-    let request_type = match (uri_path.starts_with("/2016/"), uri_path.starts_with("/144/"), uri_path.starts_with("/1/")) {
+    let request_type = match (uri_path.starts_with("/headers/2016/"), uri_path.starts_with("/headers/144/"), uri_path.starts_with("/headers/1/")) {
         (true, false, false) => RequestType::_2016,
         (false, true, false) => RequestType::_144,
         (false, false, true) => RequestType::_1,
@@ -98,9 +98,9 @@ fn validate_req(_req: Request ) -> ParsedRequest {
     };
 
     let num : Option<usize> = match request_type {
-        RequestType::_2016 => parse_uri(&uri_path[6..]),
-        RequestType::_144  => parse_uri(&uri_path[5..]),
-        RequestType::_1    => parse_uri(&uri_path[3..]),
+        RequestType::_2016 => parse_uri(&uri_path[14..]),
+        RequestType::_144  => parse_uri(&uri_path[13..]),
+        RequestType::_1    => parse_uri(&uri_path[11..]),
         RequestType::Invalid => None,
     };
 
