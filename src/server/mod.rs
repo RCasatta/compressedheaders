@@ -61,7 +61,7 @@ fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<
         _ => (0,0)
     };
     let locked_block_headers = block_headers.lock().unwrap();
-    if end > locked_block_headers.len() {
+    if end - 1 > locked_block_headers.len() {
         Response::new().with_status(StatusCode::NotFound)
     } else {
         match parsed_request.request_type {
