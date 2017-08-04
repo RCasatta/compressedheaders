@@ -1,9 +1,7 @@
-
-use std;
-use serde_json::Error;
 use bitcoin;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use util::hex::{ToHex, FromHex};
 
 #[derive(Copy, Clone, Debug)]
 pub struct BlockHeader {
@@ -85,11 +83,11 @@ impl BlockHeader {
         let nonce = block_header_rpc.nonce;
 
         BlockHeader {
-            version:  to_reversed_array_of_4(from_hex(version_hex).unwrap() ),
-            prev_blockhash:  to_reversed_array_of_32(from_hex(&previous_block_hash).unwrap() ),
-            merkle_root: to_reversed_array_of_32(from_hex(merkle_root).unwrap()),
+            version:  to_reversed_array_of_4(version_hex.from_hex().unwrap() ),
+            prev_blockhash:  to_reversed_array_of_32(previous_block_hash.from_hex().unwrap() ),
+            merkle_root: to_reversed_array_of_32(merkle_root.from_hex().unwrap()),
             time: transform_u32_to_reversed_array_of_u8(time),
-            bits: to_reversed_array_of_4(from_hex(bits).unwrap()),
+            bits: to_reversed_array_of_4(bits.from_hex().unwrap()),
             nonce: transform_u32_to_reversed_array_of_u8(nonce)
         }
     }
@@ -102,11 +100,10 @@ impl BlockHeader {
         let mut sha2b = Sha256::new();
         sha2b.input(&first);
 
-        let mut bytes : Vec<u8>= from_hex(&sha2b.result_str()).unwrap();
+        let mut bytes : Vec<u8>= (&sha2b.result_str()).from_hex().unwrap();
         bytes.reverse();
 
-        format!("{:x}",ByteBuf(bytes.as_ref()))
-
+        bytes.to_hex()
     }
 }
 
@@ -118,9 +115,6 @@ fn transform_u32_to_reversed_array_of_u8(x:u32) -> [u8;4] {
     let b4 : u8 = (x & 0xff) as u8;
     return [b4, b3, b2, b1]
 }
-
-
-
 
 fn clone_into_array<A, T>(slice: &[T]) -> A
     where A: Sized + Default + AsMut<[T]>,
@@ -150,49 +144,23 @@ fn to_reversed_array_of_32(mut vec : Vec<u8> ) -> [u8;32] {
     result
 }
 
-fn from_hex<'a>(hex_str: &'a str) -> Result<Vec<u8>, Error> {
-    // This may be an overestimate if there is any whitespace
-    let mut b = Vec::with_capacity(hex_str.len() / 2);
-    let mut modulus = 0;
-    let mut buf = 0;
+#[cfg(test)]
+mod tests {
 
-    for byte in hex_str.bytes() {
-        buf <<= 4;
+    use bitcoin::header::BlockHeader;
+    use util::hex::{ToHex,FromHex};
 
-        match byte {
-            b'A'...b'F' => buf |= byte - b'A' + 10,
-            b'a'...b'f' => buf |= byte - b'a' + 10,
-            b'0'...b'9' => buf |= byte - b'0',
-            b' '|b'\r'|b'\n'|b'\t' => {
-                buf >>= 4;
-                continue
-            }
-            _ => {
-                //let ch = hex_str[idx..].chars().next().unwrap();
-                panic!("woooow")  //FIX error
-            }
-        }
+    #[test]
+    pub fn test_block_header_from_hex_to_hex() {
+        let genesis_raw = "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c";
+        let mut genesis_raw_bytes : [u8;80] = [0;80] ;
+        let genesis_raw_vec = genesis_raw.from_hex().unwrap();
+        genesis_raw_bytes.clone_from_slice(&genesis_raw_vec);
 
-        modulus += 1;
-        if modulus == 2 {
-            modulus = 0;
-            b.push(buf);
-        }
+        let b = BlockHeader::from_bytes(genesis_raw_bytes);
+
+        assert_eq!(genesis_raw,
+        b.as_bytes().to_hex());
     }
 
-    match modulus {
-        0 => Ok(b.into_iter().collect()),
-        _ => panic!("woooow") //FIX error
-    }
-}
-
-struct ByteBuf<'a>(&'a [u8]);
-
-impl<'a> std::fmt::LowerHex for ByteBuf<'a> {
-    fn fmt(&self, fmtr: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        for byte in self.0 {
-            try!( fmtr.write_fmt(format_args!("{:02x}", byte)));
-        }
-        Ok(())
-    }
 }

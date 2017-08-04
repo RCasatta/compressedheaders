@@ -1,4 +1,3 @@
-
 use hyper::{Client, Request, Error, Method, Body};
 use hyper::header::{Authorization, Basic};
 use tokio_core::reactor::Core;
@@ -30,8 +29,6 @@ pub struct BlockHeaderRpc {
     pub nextblockhash: Option<String>,
     pub previousblockhash: Option<String>,
 }
-
-
 
 pub fn get_block_header(block_hash : String, host : String, username : String, password : Option<String>) -> Result<BlockHeaderRpcResponse, Error> {
     let auth = Authorization(Basic {
@@ -68,37 +65,3 @@ pub fn get_block_header(block_hash : String, host : String, username : String, p
 
     Ok(block_header_rpc_response)
 }
-
-
-
-
-
-pub fn get_block_header_raw(block_hash : String, host : String, username : String, password : Option<String>) -> Result<String, Error> {
-    let auth = Authorization(Basic {
-        username: username,
-        password: password
-    });
-    let mut core = Core::new()?;
-    let client = Client::new(&core.handle());
-    let request_body_string: String = format!("{{\"jsonrpc\":\"1.0\",\"id\":\"{}\",\"method\":\"{}\",\"params\":[\"{},false\"]}}", 0, "getblockheader", block_hash);
-    println!("{}", request_body_string);
-    let mut req : Request = Request::new(Method::Post, host.parse().unwrap());
-    req.set_body(Body::from(request_body_string));
-    req.headers_mut().set(auth);
-
-    let future_res = client.request(req);
-
-    let work = future_res.and_then(|res| {
-        //println!("Response: {}", res.status());
-        // read into a String, so that you don't need to do the conversion.
-        res.body().concat2()
-    });
-
-    let work_result = core.run(work)?;  //this throw on mac
-
-    //println!("work_result {:?}", work_result);
-    let utf8 = str::from_utf8(&work_result)?;
-
-    Ok(String::from(utf8))
-}
-

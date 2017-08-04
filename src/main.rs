@@ -35,6 +35,6 @@ fn main() {
         client::start(block_headers_arc_2, host, username, password);
     });
 
-    c.join();
+    println!("{:?}",c.join()); //this is a print so the return value is used
 }
 

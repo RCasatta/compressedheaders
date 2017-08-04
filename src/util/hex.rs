@@ -169,7 +169,7 @@ impl<'a, T: ?Sized + FromHex> FromHex for &'a T {
 
 #[cfg(test)]
 mod tests {
-    use hex::{FromHex, ToHex};
+    use util::hex::{FromHex, ToHex};
 
     #[test]
     pub fn test_to_hex() {
