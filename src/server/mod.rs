@@ -81,11 +81,7 @@ fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<
             .with_header(ContentLength(vec.len() as u64))
             .with_body(vec)
     }
-
-
-
 }
-
 
 fn validate_req(_req: Request ) -> ParsedRequest {
     let uri_path = _req.uri().path();

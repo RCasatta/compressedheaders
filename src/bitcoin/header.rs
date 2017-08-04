@@ -17,7 +17,7 @@ pub struct BlockHeader {
 
 
 impl BlockHeader {
-    // `Self` is the implementor type: `Sheep`.
+
     pub fn new() -> BlockHeader {
         BlockHeader { version: [0;4], prev_blockhash: [0;32], merkle_root: [0;32], time: [0;4], bits: [0;4], nonce: [0;4]  }
     }
