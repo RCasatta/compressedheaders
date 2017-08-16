@@ -128,19 +128,14 @@ fn clone_into_array<A, T>(slice: &[T]) -> A
 fn to_reversed_array_of_4(mut vec : Vec<u8> ) -> [u8;4] {
     let mut result : [u8;4]= [0;4];
     vec.reverse();
-    for (idx, el) in vec.into_iter().enumerate() {
-        result[idx]=el;
-    }
-
+    result.clone_from_slice(&vec);
     result
 }
 
 fn to_reversed_array_of_32(mut vec : Vec<u8> ) -> [u8;32] {
     let mut result : [u8;32] = [0;32];
     vec.reverse();
-    for (idx, el) in vec.into_iter().enumerate() {
-        result[idx]=el;
-    }
+    result.clone_from_slice(&vec);
     result
 }
 
