@@ -1,7 +1,8 @@
 use bitcoin;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use util::hex::{ToHex, FromHex};
+use util::hex::{ToHex,FromHex};
+use std::fmt;
 
 #[derive(Copy, Clone, Debug)]
 pub struct BlockHeader {
@@ -11,6 +12,19 @@ pub struct BlockHeader {
     pub time: [u8; 4], // The timestamp of the block, as claimed by the mainer
     pub bits: [u8; 4], // The target value below which the blockhash must lie, encoded as a a float (with well-defined rounding, of course)
     pub nonce: [u8; 4], // The nonce, selected to obtain a low enough blockhash
+}
+
+impl fmt::Display for BlockHeader {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"{}{}{}{}{}{}",
+               self.version.to_hex(),
+               self.prev_blockhash.to_hex(),
+               self.merkle_root.to_hex(),
+               self.time.to_hex(),
+               self.bits.to_hex(),
+               self.nonce.to_hex()
+        )
+    }
 }
 
 
@@ -59,15 +73,12 @@ impl BlockHeader {
         }
     }
 
-    pub fn from_compressed_bytes(bytes : [u8;48], prev_blockhash : [u8;32]) -> BlockHeader {
-        BlockHeader {
-            version:        clone_into_array(&bytes[0 .. 4]),
-            prev_blockhash: clone_into_array(&prev_blockhash),
-            merkle_root:    clone_into_array(&bytes[4 .. 36]),
-            time:           clone_into_array(&bytes[36 .. 40]),
-            bits:           clone_into_array(&bytes[40 .. 44]),
-            nonce:          clone_into_array(&bytes[44 .. 48])
-        }
+    pub fn from_compressed_bytes(compressed_bytes : [u8;48], prev_blockhash : [u8;32]) -> BlockHeader {
+        let mut result : [u8;80] = [0;80];
+        result[..4].clone_from_slice(&compressed_bytes[..4]);
+        result[4..36].clone_from_slice(&prev_blockhash);
+        result[36..80].clone_from_slice(&compressed_bytes[4..48]);
+        BlockHeader::from_bytes(result)
     }
 
     pub fn from_block_header_rpc(block_header_rpc : bitcoin::rpc::BlockHeaderRpc) -> BlockHeader {
@@ -92,7 +103,7 @@ impl BlockHeader {
         }
     }
 
-    pub fn hash(&self) -> String {
+    pub fn hash(&self) -> [u8;32] {
         let mut sha2 = Sha256::new();
         sha2.input(&self.as_bytes());
         let mut first : [u8;32] = [0;32];
@@ -100,10 +111,14 @@ impl BlockHeader {
         let mut sha2b = Sha256::new();
         sha2b.input(&first);
 
-        let mut bytes : Vec<u8>= (&sha2b.result_str()).from_hex().unwrap();
-        bytes.reverse();
 
-        bytes.to_hex()
+        let bytes : Vec<u8>= (&sha2b.result_str()).from_hex().unwrap();  //TODO nonsense passing from string
+        //bytes.reverse();
+
+        let mut result: [u8;32] = [0;32];
+        result.clone_from_slice(&bytes);
+
+        result
     }
 }
 
@@ -156,6 +171,53 @@ mod tests {
 
         assert_eq!(genesis_raw,
         b.as_bytes().to_hex());
+    }
+
+    //TODO make next 3 tests parametric, transform data returned from include_bytes to vector?
+
+    #[test]
+    pub fn test_block_headers_reconstruct() {
+        let test_data_144 = include_bytes!("../../examples/144/0").to_vec();
+        test_block_header_reconstruct(test_data_144,
+                                          144,
+                                          String::from("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"), //genesis block
+                                          String::from("61188712afd4785d18ef15db57fb52dd150b56c8b547fc6bbf23ec4900000000"), //block #143
+                                         );
+
+        let test_data_2016 = include_bytes!("../../examples/2016/0").to_vec();
+        test_block_header_reconstruct(test_data_2016,
+                                      2016,
+                                      String::from("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"), //genesis block
+                                      String::from("6397bb6abd4fc521c0d3f6071b5650389f0b4551bc40b4e6b067306900000000"), //block #2015
+        );
+
+        let test_data_2016_20 = include_bytes!("../../examples/2016/20").to_vec();
+        test_block_header_reconstruct(test_data_2016_20,
+                                      2016,
+                                      String::from("45720d24eae33ade0d10397a2e02989edef834701b965a9b161e864500000000"), //block #40320
+                                      String::from("e709fcacfe11464204e4cc1daf4a7b63df72a742a59f4f3eef96843000000000"), //block #42335
+        );
+    }
+
+    pub fn test_block_header_reconstruct(test_data : Vec<u8>, chunk_size : u32, first_hash_verify : String, last_hash_verify : String) {
+        let mut first : [u8;80] = [0;80];
+        first.clone_from_slice(&test_data[0..80]);
+        let first_as_block : BlockHeader = BlockHeader::from_bytes(first);
+        let first_hash = first_as_block.hash();
+        assert_eq!(first_hash.to_hex(),first_hash_verify);
+        let mut prev_hash = first_hash;
+        for i in 0..chunk_size-1 {
+            let mut compressed_block_bytes : [u8;48] = [0;48];
+            let start = (i * 48 + 80) as usize;
+            let end   = (start + 48) as usize;
+            compressed_block_bytes.clone_from_slice(&test_data[start..end]);
+            let current_as_block : BlockHeader = BlockHeader::from_compressed_bytes(compressed_block_bytes, prev_hash);
+            let current_hash = current_as_block.hash();
+            prev_hash = current_hash;
+            if i==chunk_size-2 {
+                assert_eq!(current_hash.to_hex(),last_hash_verify);
+            }
+        }
     }
 
 }

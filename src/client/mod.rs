@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use util::hex::ToHex;
 use bitcoin::header::BlockHeader;
 use bitcoin;
 
@@ -38,9 +39,10 @@ pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>, host : String
                                 block_headers.push(None);
                             }
                             block_headers[height] = Some(block_header);
-
-                            if min_block_hash>block_header.hash() {
-                                min_block_hash = block_header.hash();
+                            let mut hash = block_header.hash();
+                            hash.reverse();
+                            if min_block_hash> hash.to_hex() {
+                                min_block_hash = hash.to_hex();
                                 println!("Block #{} with hash {} is the min!", height, min_block_hash );
                             }
 
@@ -51,7 +53,7 @@ pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>, host : String
                                 println!("Block #{} with hash {}", height, block_hash );
                             }
                             last_block = height;
-                            block_hash = block_headers[height - 144].unwrap().hash();   //going back 144 blocks to support reorgs one day long
+                            block_hash = block_headers[height - 144].unwrap().hash().to_hex();   //going back 144 blocks to support reorgs one day long
 
                             true
                         }

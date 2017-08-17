@@ -5,6 +5,7 @@ use hyper::header::{ContentLength,ContentType};
 use hyper::server::{Http, Request, Response, Service};
 use bitcoin::header::BlockHeader;
 use hyper::StatusCode;
+use util::hex::ToHex;
 
 #[derive(Clone)]
 struct HelloWorld {
@@ -26,7 +27,10 @@ struct ParsedRequest {
 }
 
 pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>) {
-    let addr = "127.0.0.1:3000".parse().unwrap();
+
+    let x = "127.0.0.1:3000";
+    println!("server starting at {}", x);
+    let addr = x.parse().unwrap();
 
     let server = Http::new().bind(&addr,move || Ok(HelloWorld{
         block_headers : block_headers.clone()
@@ -72,9 +76,15 @@ fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<
         }
 
         let mut vec : Vec<u8> = Vec::new();
-        vec.extend(locked_block_headers[start].unwrap().as_bytes().into_iter() );
+        let first = locked_block_headers[start].unwrap();
+        println!("{} first",first);
+        vec.extend(first.as_bytes().into_iter() );
         for i in start+1..end {
-            vec.extend(locked_block_headers[i].unwrap().as_compressed_bytes().into_iter() );
+            let current = locked_block_headers[i].unwrap();
+            println!("{} current for i={}",current,i);
+            let compressed = current.as_compressed_bytes();
+            println!("{} compressed for i={}",compressed.to_hex(),i);
+            vec.extend(compressed.into_iter() );
         }
         Response::new()
             .with_header(ContentType::octet_stream())
