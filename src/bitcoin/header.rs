@@ -173,8 +173,6 @@ mod tests {
         b.as_bytes().to_hex());
     }
 
-    //TODO make next 3 tests parametric, transform data returned from include_bytes to vector?
-
     #[test]
     pub fn test_block_headers_reconstruct() {
         let test_data_144 = include_bytes!("../../examples/144/0").to_vec();
