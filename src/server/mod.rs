@@ -5,7 +5,6 @@ use hyper::header::{ContentLength,ContentType};
 use hyper::server::{Http, Request, Response, Service};
 use bitcoin::header::BlockHeader;
 use hyper::StatusCode;
-use util::hex::ToHex;
 
 #[derive(Clone)]
 struct HelloWorld {
