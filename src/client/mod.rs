@@ -65,7 +65,7 @@ pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>, host : String
             },
             Err(e) =>{
                 println!("{:?} with hash {}",e, block_hash);
-                thread::sleep(Duration::from_secs(30));
+                thread::sleep(Duration::from_secs(1));
             }
         }
 
