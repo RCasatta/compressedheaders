@@ -39,10 +39,9 @@ pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>, host : String
                                 block_headers.push(None);
                             }
                             block_headers[height] = Some(block_header);
-                            let mut hash = block_header.hash();
-                            hash.reverse();
-                            if min_block_hash> hash.to_hex() {
-                                min_block_hash = hash.to_hex();
+                            let hash_hex = block_header.hash_be().to_hex();
+                            if min_block_hash> hash_hex {
+                                min_block_hash = hash_hex;
                                 println!("Block #{} with hash {} is the min!", height, min_block_hash );
                             }
 
@@ -53,7 +52,7 @@ pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>, host : String
                                 println!("Block #{} with hash {}", height, block_hash );
                             }
                             last_block = height;
-                            block_hash = block_headers[height - 144].unwrap().hash().to_hex();   //going back 144 blocks to support reorgs one day long
+                            block_hash = block_headers[height - 144].unwrap().hash_be().to_hex();   //going back 144 blocks to support reorgs one day long
 
                             true
                         }
@@ -65,7 +64,7 @@ pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>, host : String
                 }
             },
             Err(e) =>{
-                println!("{:?}",e);
+                println!("{:?} with hash {}",e, block_hash);
                 thread::sleep(Duration::from_secs(30));
             }
         }

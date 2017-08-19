@@ -103,6 +103,11 @@ impl BlockHeader {
         }
     }
 
+    pub fn hash_be(&self) -> [u8;32] {
+        let mut hash = self.hash();
+        hash.reverse();
+        hash
+    }
     pub fn hash(&self) -> [u8;32] {
         let mut sha2 = Sha256::new();
         sha2.input(&self.as_bytes());
@@ -169,40 +174,60 @@ mod tests {
 
         let b = BlockHeader::from_bytes(genesis_raw_bytes);
 
-        assert_eq!(genesis_raw,
-        b.as_bytes().to_hex());
+        assert_eq!(genesis_raw,b.as_bytes().to_hex());
+
+        assert_eq!("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",b.hash_be().to_hex());
+
     }
 
     #[test]
     pub fn test_block_headers_reconstruct() {
         let test_data_144 = include_bytes!("../../examples/144/0").to_vec();
+        let zeroes = "0000000000000000000000000000000000000000000000000000000000000000";
+        let genesis_block = "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000";
+        let block_42335 = "e709fcacfe11464204e4cc1daf4a7b63df72a742a59f4f3eef96843000000000";
+
         test_block_header_reconstruct(test_data_144,
-                                          144,
-                                          String::from("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"), //genesis block
-                                          String::from("61188712afd4785d18ef15db57fb52dd150b56c8b547fc6bbf23ec4900000000"), //block #143
-                                         );
+                                      144,
+                                      String::from(zeroes),
+                                      String::from(genesis_block), //genesis block
+                                      String::from("61188712afd4785d18ef15db57fb52dd150b56c8b547fc6bbf23ec4900000000"), //block #143
+        );
 
         let test_data_2016 = include_bytes!("../../examples/2016/0").to_vec();
         test_block_header_reconstruct(test_data_2016,
                                       2016,
-                                      String::from("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"), //genesis block
+                                      String::from(zeroes),
+                                      String::from(genesis_block), //genesis block
                                       String::from("6397bb6abd4fc521c0d3f6071b5650389f0b4551bc40b4e6b067306900000000"), //block #2015
         );
 
         let test_data_2016_20 = include_bytes!("../../examples/2016/20").to_vec();
         test_block_header_reconstruct(test_data_2016_20,
                                       2016,
+                                      String::from("1a231097b6ab6279c80f24674a2c8ee5b9a848e1d45715ad89b6358100000000"), //block #40319
                                       String::from("45720d24eae33ade0d10397a2e02989edef834701b965a9b161e864500000000"), //block #40320
-                                      String::from("e709fcacfe11464204e4cc1daf4a7b63df72a742a59f4f3eef96843000000000"), //block #42335
+                                      String::from(block_42335), //block #42335
         );
+
+        let test_data_2016_21 = include_bytes!("../../examples/2016/21").to_vec();
+        test_block_header_reconstruct(test_data_2016_21,
+                                      2016,
+                                      String::from(block_42335), //block #42335
+                                      String::from("1296ba2f0a66e421d7f51c4596c2ce0820903f3d81a953173778000b00000000"), //block #42336
+                                      String::from("d55e1b468c22798971272037d6cc04fdac73913c0012d0d7630c2e1a00000000"), //block #44351
+        );
+
+        //TODO add test continuity between chunk (prev first hash equal last previous chunk)
     }
 
-    pub fn test_block_header_reconstruct(test_data : Vec<u8>, chunk_size : u32, first_hash_verify : String, last_hash_verify : String) {
+    pub fn test_block_header_reconstruct(test_data : Vec<u8>, chunk_size : u32, first_prev_hash : String, first_hash_verify : String, last_hash_verify : String) {
         let mut first : [u8;80] = [0;80];
         first.clone_from_slice(&test_data[0..80]);
         let first_as_block : BlockHeader = BlockHeader::from_bytes(first);
         let first_hash = first_as_block.hash();
         assert_eq!(first_hash.to_hex(),first_hash_verify);
+        assert_eq!(first_as_block.prev_blockhash.to_hex(),first_prev_hash);
         let mut prev_hash = first_hash;
         for i in 0..chunk_size-1 {
             let mut compressed_block_bytes : [u8;48] = [0;48];
