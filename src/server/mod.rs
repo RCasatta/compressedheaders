@@ -3,11 +3,12 @@ use hyper;
 use futures;
 use hyper::header::{ContentLength,ContentType};
 use hyper::server::{Http, Request, Response, Service};
+use std::net::SocketAddr;
 use bitcoin::header::BlockHeader;
 use hyper::StatusCode;
 
 #[derive(Clone)]
-struct HelloWorld {
+struct HeaderServices {
     block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>,
 }
 
@@ -29,15 +30,16 @@ pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>) {
 
     let x = "127.0.0.1:3000";
     println!("server starting at {}", x);
-    let addr = x.parse().unwrap();
+    let addr : SocketAddr = x.parse().unwrap();
+    println!("{:?}",addr);
 
-    let server = Http::new().bind(&addr,move || Ok(HelloWorld{
+    let server = Http::new().bind(&addr,move || Ok(HeaderServices {
         block_headers : block_headers.clone()
     })).unwrap();
     server.run().unwrap();
 }
 
-impl Service for HelloWorld {
+impl Service for HeaderServices {
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
