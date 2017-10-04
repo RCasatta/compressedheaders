@@ -4,6 +4,8 @@ use crypto::sha2::Sha256;
 use util::hex::{ToHex,FromHex};
 use std::fmt;
 
+static GENESIS_RAW_HEX: &'static str = "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c";
+
 #[derive(Copy, Clone, Debug)]
 pub struct BlockHeader {
     pub version: [u8; 4], // The protocol version. Should always be 1.
@@ -34,6 +36,14 @@ impl BlockHeader {
         BlockHeader { version: [0;4], prev_blockhash: [0;32], merkle_root: [0;32], time: [0;4], bits: [0;4], nonce: [0;4]  }
     }
 
+    pub fn genesis() -> BlockHeader {
+        let mut genesis_raw_bytes : [u8;80] = [0;80] ;
+        let genesis_raw_vec = GENESIS_RAW_HEX.from_hex().unwrap();
+        genesis_raw_bytes.clone_from_slice(&genesis_raw_vec);
+        let b = BlockHeader::from_bytes(genesis_raw_bytes);
+        return b;
+    }
+
     pub fn as_bytes(&self) -> [u8;80] {
         let mut result : [u8;80] = [0;80];
         let mut vec : Vec<u8> = Vec::new();
@@ -49,16 +59,12 @@ impl BlockHeader {
         result
     }
 
-    pub fn as_compressed_bytes(&self) -> [u8;48] {
-        let mut result : [u8;48] = [0;48];
-        let all = &self.as_bytes();
-        for i in 0..48 {
-            if i < 4 {
-                result[i] = all[i];
-            } else {
-                result[i] = all[32+i];
-            }
-        }
+    pub fn as_compressed_bytes(&self) -> [u8;44] {
+        let mut result : [u8;44] = [0;44];
+        let current = &self.as_bytes();
+        result[0..4].clone_from_slice(&current[0..4]);
+        result[4..40].clone_from_slice(&current[36..72]);
+        result[40..44].clone_from_slice(&current[76..80]);
         result
     }
 
@@ -73,11 +79,14 @@ impl BlockHeader {
         }
     }
 
-    pub fn from_compressed_bytes(compressed_bytes : [u8;48], prev_blockhash : [u8;32]) -> BlockHeader {
+    pub fn from_compressed_bytes(compressed_bytes : [u8;44], prev_blockhash : [u8;32], difficulty : [u8;4]) -> BlockHeader {
         let mut result : [u8;80] = [0;80];
-        result[..4].clone_from_slice(&compressed_bytes[..4]);
+        result[0..4].clone_from_slice(&compressed_bytes[0..4]);
         result[4..36].clone_from_slice(&prev_blockhash);
-        result[36..80].clone_from_slice(&compressed_bytes[4..48]);
+        result[36..72].clone_from_slice(&compressed_bytes[4..40]);
+        result[72..76].clone_from_slice(&difficulty);
+        result[76..80].clone_from_slice(&compressed_bytes[40..44]);
+
         BlockHeader::from_bytes(result)
     }
 
@@ -164,20 +173,30 @@ mod tests {
 
     use bitcoin::header::BlockHeader;
     use util::hex::{ToHex,FromHex};
+    use bitcoin::header::GENESIS_RAW_HEX;
+
+    #[test]
+    pub fn test_genesis() {
+        let g = BlockHeader::genesis();
+        let h = g.hash_be().to_hex();
+        assert_eq!(h,"000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+    }
+
+    #[test]
+    pub fn test_as_compressed_bytes() {
+        let g = BlockHeader::genesis();
+        let b = g.as_compressed_bytes();
+        assert_eq!(b.to_hex(),"010000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f491dac2b7c");
+    }
 
     #[test]
     pub fn test_block_header_from_hex_to_hex() {
-        let genesis_raw = "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c";
         let mut genesis_raw_bytes : [u8;80] = [0;80] ;
-        let genesis_raw_vec = genesis_raw.from_hex().unwrap();
+        let genesis_raw_vec = GENESIS_RAW_HEX.from_hex().unwrap();
         genesis_raw_bytes.clone_from_slice(&genesis_raw_vec);
-
         let b = BlockHeader::from_bytes(genesis_raw_bytes);
-
-        assert_eq!(genesis_raw,b.as_bytes().to_hex());
-
+        assert_eq!(GENESIS_RAW_HEX,b.as_bytes().to_hex());
         assert_eq!("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",b.hash_be().to_hex());
-
     }
 
     #[test]
@@ -229,12 +248,13 @@ mod tests {
         assert_eq!(first_hash.to_hex(),first_hash_verify);
         assert_eq!(first_as_block.prev_blockhash.to_hex(),first_prev_hash);
         let mut prev_hash = first_hash;
+        let prev_diff = first_as_block.bits;
         for i in 0..chunk_size-1 {
-            let mut compressed_block_bytes : [u8;48] = [0;48];
-            let start = (i * 48 + 80) as usize;
-            let end   = (start + 48) as usize;
+            let mut compressed_block_bytes : [u8;44] = [0;44];
+            let start = (i * 44 + 80) as usize;
+            let end   = (start + 44) as usize;
             compressed_block_bytes.clone_from_slice(&test_data[start..end]);
-            let current_as_block : BlockHeader = BlockHeader::from_compressed_bytes(compressed_block_bytes, prev_hash);
+            let current_as_block : BlockHeader = BlockHeader::from_compressed_bytes(compressed_block_bytes, prev_hash, prev_diff);
             let current_hash = current_as_block.hash();
             prev_hash = current_hash;
             if i==chunk_size-2 {
