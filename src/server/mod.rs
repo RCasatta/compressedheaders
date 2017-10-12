@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use hyper;
 use futures;
-use hyper::header::{ContentLength,ContentType};
+use hyper::header::{Headers,ContentLength,ContentType,Range,RangeUnit,AcceptRanges,ByteRangeSpec};
 use hyper::server::{Http, Request, Response, Service};
 use std::net::SocketAddr;
 use bitcoin::header::BlockHeader;
@@ -9,32 +9,16 @@ use hyper::StatusCode;
 
 #[derive(Clone)]
 struct HeaderServices {
-    block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>,
+    block_headers_bytes : Arc<Mutex<Vec<u8>>>,
 }
 
-#[derive(Debug, Clone, Copy)]
-enum RequestType {
-    _2016,
-    _144,
-    _1,
-    Invalid,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct ParsedRequest {
-    request_type : RequestType,
-    chunk_number : Option<usize>,
-}
-
-pub fn start(block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>) {
-
+pub fn start(block_headers_bytes : Arc<Mutex<Vec<u8>>>) {
     let x = "127.0.0.1:3000";
     println!("server starting at {}", x);
     let addr : SocketAddr = x.parse().unwrap();
     println!("{:?}",addr);
-
     let server = Http::new().bind(&addr,move || Ok(HeaderServices {
-        block_headers : block_headers.clone()
+        block_headers_bytes : block_headers_bytes.clone(),
     })).unwrap();
     server.run().unwrap();
 }
@@ -46,17 +30,84 @@ impl Service for HeaderServices {
     type Future = futures::future::FutureResult<Self::Response, Self::Error>;
 
     fn call(&self, _req: Request) -> Self::Future {
-        let parsed_request = validate_req(_req);
-        let response = match (parsed_request.request_type, parsed_request.chunk_number) {
-            (RequestType::Invalid,_) => Response::new().with_status(StatusCode::NotFound),
-            (_,None) => Response::new().with_status(StatusCode::BadRequest),
-            _ => build_response(parsed_request, self.block_headers.clone()),
+
+
+        let response = match validate_req(_req) {
+            Err(e) => Response::new().with_status(e) ,
+            Ok(r) => build_range_response(self.block_headers_bytes.clone(), r) ,
         };
 
         futures::future::ok(response)
     }
 }
 
+fn validate_req(_req: Request ) -> Result<Option<Range>, StatusCode> {
+    let uri_path = _req.uri().path();
+
+    match uri_path.eq("/bitcoin-headers") {
+        true  => {
+            match _req.headers().get::<Range>() {
+                Some(r) => Ok(Some(r.clone())),
+                None => Ok(None)
+            }
+        },
+        false => Err(StatusCode::NotFound),
+    }
+}
+
+
+fn build_range_response( block_headers_bytes_arc : Arc<Mutex<Vec<u8>>>, range : Option<Range>) -> Response {
+    let block_headers_bytes = block_headers_bytes_arc.lock().unwrap();
+    match range {
+        Some(range) => {
+            println!("{:?}",range);
+
+            match range {
+                Range::Bytes(r) => {
+                    let (start, end) = match r[0] {
+                        ByteRangeSpec::AllFrom(start) => {
+                            println!("AllFrom {}", start);
+                            (start as usize, block_headers_bytes.len())
+                        },
+                        ByteRangeSpec::FromTo(start, end) => {
+                            println!("FromTo {} {}", start, end);
+                            (start as usize, end as usize)
+                        },
+                        ByteRangeSpec::Last(x) => {
+                            println!("Last {}", x);
+                            let end = block_headers_bytes.len();
+                            (end - (x as usize), end)
+                        }
+                    };
+                    println!("{}-{}",start,end);
+                    let mut reply = Vec::with_capacity(end-start);
+                    reply.extend(&block_headers_bytes[start..end]);
+
+                    Response::new()
+                        .with_header(ContentType::octet_stream())
+                        .with_header(ContentLength(reply.len() as u64))
+                        .with_body(reply)
+                },
+                Range::Unregistered(r,s) => {
+                    Response::new().with_status(StatusCode::NotFound)
+                }
+            }
+        },
+        None => {
+            let mut headers = Headers::new();
+            headers.set(AcceptRanges(vec![RangeUnit::Bytes]));
+            headers.set(ContentLength( block_headers_bytes.len() as u64 ));
+
+            Response::new()
+                .with_headers( headers )
+                .with_status(StatusCode::Ok)
+        }
+     }
+
+    // headers.set(AcceptRanges(vec![RangeUnit::Bytes]));
+    //headers.set(Range::bytes(1, 100));
+}
+/*
 fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>) -> Response {
     let chunk_number = parsed_request.chunk_number.unwrap();
     let (start,end) = match parsed_request.request_type {
@@ -91,33 +142,4 @@ fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<
     }
 }
 
-fn validate_req(_req: Request ) -> ParsedRequest {
-    let uri_path = _req.uri().path();
-
-    let request_type = match (uri_path.starts_with("/headers/2016/"), uri_path.starts_with("/headers/144/"), uri_path.starts_with("/headers/1/")) {
-        (true, false, false) => RequestType::_2016,
-        (false, true, false) => RequestType::_144,
-        (false, false, true) => RequestType::_1,
-        _ => RequestType::Invalid,
-    };
-
-    let num : Option<usize> = match request_type {
-        RequestType::_2016 => parse_uri(&uri_path[14..]),
-        RequestType::_144  => parse_uri(&uri_path[13..]),
-        RequestType::_1    => parse_uri(&uri_path[11..]),
-        RequestType::Invalid => None,
-    };
-
-    ParsedRequest {
-        request_type : request_type,
-        chunk_number : num,
-    }
-}
-
-#[allow(unused_variables)]
-fn parse_uri(num : &str) -> Option<usize> {
-    match num.parse::<usize>() {
-        Ok(n) => Some(n),
-        Err(e) => None,
-    }
-}
+*/

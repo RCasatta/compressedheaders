@@ -22,17 +22,17 @@ fn main() {
     let username = env::args().nth(2).unwrap();
     let password = Some(env::args().nth(3).unwrap());
 
-    let block_headers  = Vec::with_capacity(1000000) ;
-    let block_headers_arc = Arc::new(Mutex::new(block_headers));
+    let block_headers_bytes  = Vec::new() ;
+    let block_headers_bytes_arc = Arc::new(Mutex::new(block_headers_bytes));
 
-    let block_headers_arc_1 = block_headers_arc.clone();
+    let block_headers_bytes_arc_1 = block_headers_bytes_arc.clone();
     thread::spawn(move || {
-        server::start(block_headers_arc_1);
+        server::start(block_headers_bytes_arc_1);
     });
 
-    let block_headers_arc_2 = block_headers_arc.clone();
+    let block_headers_bytes_arc_2 = block_headers_bytes_arc.clone();
     let c = thread::spawn(move || {
-        client::start(block_headers_arc_2, host, username, password);
+        client::start(block_headers_bytes_arc_2, host, username, password);
     });
 
     let _ = c.join();
