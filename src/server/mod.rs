@@ -4,7 +4,6 @@ use futures;
 use hyper::header::{Headers,ContentLength,ContentType,Range,RangeUnit,AcceptRanges,ByteRangeSpec};
 use hyper::server::{Http, Request, Response, Service};
 use std::net::SocketAddr;
-use bitcoin::header::BlockHeader;
 use hyper::StatusCode;
 
 #[derive(Clone)]
@@ -60,26 +59,18 @@ fn build_range_response( block_headers_bytes_arc : Arc<Mutex<Vec<u8>>>, range : 
     let block_headers_bytes = block_headers_bytes_arc.lock().unwrap();
     match range {
         Some(range) => {
-            println!("{:?}",range);
-
             match range {
                 Range::Bytes(r) => {
                     let (start, end) = match r[0] {
-                        ByteRangeSpec::AllFrom(start) => {
-                            println!("AllFrom {}", start);
-                            (start as usize, block_headers_bytes.len())
-                        },
-                        ByteRangeSpec::FromTo(start, end) => {
-                            println!("FromTo {} {}", start, end);
-                            (start as usize, end as usize)
-                        },
+                        ByteRangeSpec::AllFrom(start) => (start as usize, block_headers_bytes.len()),
+                        ByteRangeSpec::FromTo(start, end) => (start as usize, end as usize),
                         ByteRangeSpec::Last(x) => {
-                            println!("Last {}", x);
                             let end = block_headers_bytes.len();
                             (end - (x as usize), end)
                         }
                     };
-                    println!("{}-{}",start,end);
+                    println!("Range request {}-{}",start,end);
+
                     let mut reply = Vec::with_capacity(end-start);
                     reply.extend(&block_headers_bytes[start..end]);
 
@@ -88,7 +79,7 @@ fn build_range_response( block_headers_bytes_arc : Arc<Mutex<Vec<u8>>>, range : 
                         .with_header(ContentLength(reply.len() as u64))
                         .with_body(reply)
                 },
-                Range::Unregistered(r,s) => {
+                Range::Unregistered(_,_) => {
                     Response::new().with_status(StatusCode::NotFound)
                 }
             }

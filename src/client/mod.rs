@@ -50,7 +50,7 @@ pub fn start(block_headers_bytes : Arc<Mutex<Vec<u8>>>, host : String, username 
                     },
                     None => {
                         if height != last_block {
-                            println!("Block #{} with hash {}", height, block_hash );
+                            println!("Block #{} with hash {} synced_height {}", height, block_hash, synced_height );
                             synced_height = sync(&block_headers_vec, &block_headers_bytes, height, synced_height);
                         }
                         last_block = height;
@@ -86,13 +86,4 @@ pub fn sync( block_headers_vec : &Vec<Option<BlockHeader>>  , block_headers_byte
     } else {
         height
     }
-}
-
-fn byte_size( block_headers : Vec<Option<BlockHeader>> ) -> usize {
-    let len = block_headers.len();
-    let chunks = len/2016;
-    let byte_size = (len - chunks) * 44 + chunks * 80;
-    println!("len:{} chunks:{} byte_size:{}",len,chunks,byte_size);
-
-    byte_size
 }
