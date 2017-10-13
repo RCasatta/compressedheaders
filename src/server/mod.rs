@@ -29,13 +29,10 @@ impl Service for HeaderServices {
     type Future = futures::future::FutureResult<Self::Response, Self::Error>;
 
     fn call(&self, _req: Request) -> Self::Future {
-
-
         let response = match validate_req(_req) {
             Err(e) => Response::new().with_status(e) ,
             Ok(r) => build_range_response(self.block_headers_bytes.clone(), r) ,
         };
-
         futures::future::ok(response)
     }
 }
@@ -44,11 +41,10 @@ fn validate_req(_req: Request ) -> Result<Option<Range>, StatusCode> {
     let uri_path = _req.uri().path();
 
     match uri_path.eq("/bitcoin-headers") {
-        true  => {
+        true  =>
             match _req.headers().get::<Range>() {
                 Some(r) => Ok(Some(r.clone())),
                 None => Ok(None)
-            }
         },
         false => Err(StatusCode::NotFound),
     }
@@ -95,42 +91,4 @@ fn build_range_response( block_headers_bytes_arc : Arc<Mutex<Vec<u8>>>, range : 
         }
      }
 
-    // headers.set(AcceptRanges(vec![RangeUnit::Bytes]));
-    //headers.set(Range::bytes(1, 100));
 }
-/*
-fn build_response(parsed_request : ParsedRequest, block_headers : Arc<Mutex<Vec<Option<BlockHeader>>>>) -> Response {
-    let chunk_number = parsed_request.chunk_number.unwrap();
-    let (start,end) = match parsed_request.request_type {
-        RequestType::_1    => (1*chunk_number, 1*chunk_number+1),
-        RequestType::_144  => (144*chunk_number, 144*chunk_number+144),
-        RequestType::_2016 => (2016*chunk_number, 2016*chunk_number+2016),
-        _ => (0,0)
-    };
-    let locked_block_headers = block_headers.lock().unwrap();
-    if end > locked_block_headers.len() {
-        Response::new().with_status(StatusCode::NotFound)
-    } else {
-        match parsed_request.request_type {
-            RequestType::_1 =>
-                println!("Request type: _1 chunk: {} -> Returning header of block {}", chunk_number, start),
-            _ =>
-                println!("Request type: {:?} chunk: {} -> Returning compressed headers from {} to {}",parsed_request.request_type, chunk_number, start,end-1),
-        }
-
-        let mut vec : Vec<u8> = Vec::new();
-        let first = locked_block_headers[start].unwrap();
-        vec.extend(first.as_bytes().into_iter() );
-        for i in start+1..end {
-            let current = locked_block_headers[i].unwrap();
-            let compressed = current.as_compressed_bytes();
-            vec.extend(compressed.into_iter() );
-        }
-        Response::new()
-            .with_header(ContentType::octet_stream())
-            .with_header(ContentLength(vec.len() as u64))
-            .with_body(vec)
-    }
-}
-
-*/
