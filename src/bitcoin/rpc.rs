@@ -1,4 +1,4 @@
-use hyper::{Client, Request, Error, Method, Body};
+use hyper::{Body, Client, Error, Method, Request};
 use hyper::header::{Authorization, Basic};
 use tokio_core::reactor::Core;
 use futures::{Future, Stream};
@@ -7,7 +7,7 @@ use std::str;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BlockHeaderRpcResponse {
-    pub result : BlockHeaderRpc,
+    pub result: BlockHeaderRpc,
     pub id: String,
     pub error: Option<String>,
 }
@@ -30,15 +30,25 @@ pub struct BlockHeaderRpc {
     pub previousblockhash: Option<String>,
 }
 
-pub fn get_block_header(block_hash : String, host : String, username : String, password : Option<String>) -> Result<BlockHeaderRpcResponse, Error> {
+pub fn get_block_header(
+    block_hash: String,
+    host: String,
+    username: String,
+    password: Option<String>,
+) -> Result<BlockHeaderRpcResponse, Error> {
     let auth = Authorization(Basic {
         username: username,
-        password: password
+        password: password,
     });
     let mut core = Core::new()?;
     let client = Client::new(&core.handle());
-    let request_body_string: String = format!("{{\"jsonrpc\":\"1.0\",\"id\":\"{}\",\"method\":\"{}\",\"params\":[\"{}\"]}}", 0, "getblockheader", block_hash);
-    let mut req : Request = Request::new(Method::Post, host.parse().unwrap());
+    let request_body_string: String = format!(
+        "{{\"jsonrpc\":\"1.0\",\"id\":\"{}\",\"method\":\"{}\",\"params\":[\"{}\"]}}",
+        0,
+        "getblockheader",
+        block_hash
+    );
+    let mut req: Request = Request::new(Method::Post, host.parse().unwrap());
     req.set_body(Body::from(request_body_string));
     req.headers_mut().set(auth);
 
@@ -50,13 +60,13 @@ pub fn get_block_header(block_hash : String, host : String, username : String, p
         res.body().concat2()
     });
 
-    let work_result = core.run(work)?;  //this throw on mac
+    let work_result = core.run(work)?; //this throw on mac
 
     //println!("work_result {:?}", work_result);
     let utf8 = str::from_utf8(&work_result)?;
 
     //println!("GET: {}", utf8);
-    let block_header_rpc_response : BlockHeaderRpcResponse = match serde_json::from_str(utf8) {
+    let block_header_rpc_response: BlockHeaderRpcResponse = match serde_json::from_str(utf8) {
         Err(e) => return Err(Error::Io(e.into())),
         Ok(f) => f,
     };
