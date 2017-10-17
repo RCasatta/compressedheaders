@@ -85,7 +85,7 @@ pub fn start(
                             .get(&(height - 6))
                             .unwrap()
                             .hash_be()
-                            .to_hex(); //going back 144 blocks to support reorgs one day long
+                            .to_hex(); //going back 6 blocks to support reorgs
 
                         true
                     }
