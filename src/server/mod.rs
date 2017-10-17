@@ -14,9 +14,8 @@ struct HeaderServices {
 
 pub fn start(block_headers_bytes: Arc<Mutex<Vec<u8>>>) {
     let x = "127.0.0.1:3000";
-    println!("server starting at {}", x);
+    println!("server starting at http://{}", x);
     let addr: SocketAddr = x.parse().unwrap();
-    println!("{:?}", addr);
     let server = Http::new()
         .bind(&addr, move || {
             Ok(HeaderServices {
