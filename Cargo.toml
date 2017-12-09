@@ -1,5 +1,5 @@
 [package]
-name = "rust-bitcoin-headers"
+name = "compressedheaders"
 version = "0.1.0"
 authors = ["Riccardo Casatta <riccardo@casatta.it>"]
 

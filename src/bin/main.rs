@@ -1,8 +1,4 @@
-pub mod bitcoin;
-pub mod server;
-pub mod client;
-pub mod util;
-
+extern crate compressedheaders;
 extern crate crypto;
 extern crate futures;
 extern crate hyper;
@@ -10,14 +6,12 @@ extern crate serde;
 extern crate serde_json;
 extern crate tokio_core;
 
-#[macro_use]
-extern crate serde_derive;
-
 use std::env;
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::fs::File;
 use std::io::Read;
+use compressedheaders::{server, client};
 
 fn main() {
     let (host, username, password) = read_config().unwrap();
