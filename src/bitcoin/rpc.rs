@@ -4,6 +4,7 @@ use tokio_core::reactor::Core;
 use futures::{Future, Stream};
 use serde_json;
 use std::str;
+use bitcoin::Config;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BlockHeaderRpcResponse {
@@ -32,13 +33,11 @@ pub struct BlockHeaderRpc {
 
 pub fn get_block_header(
     block_hash: String,
-    host: String,
-    username: String,
-    password: Option<String>,
+    config: &Config,
 ) -> Result<BlockHeaderRpcResponse, Error> {
     let auth = Authorization(Basic {
-        username: username,
-        password: password,
+        username: config.username.clone(),
+        password: config.password.clone(),
     });
     let mut core = Core::new()?;
     let client = Client::new(&core.handle());
@@ -48,7 +47,7 @@ pub fn get_block_header(
         "getblockheader",
         block_hash
     );
-    let mut req: Request = Request::new(Method::Post, host.parse().unwrap());
+    let mut req: Request = Request::new(Method::Post, config.host.parse().unwrap());
     req.set_body(Body::from(request_body_string));
     req.headers_mut().set(auth);
 

@@ -5,12 +5,11 @@ use util::hex::ToHex;
 use bitcoin::header::BlockHeader;
 use bitcoin;
 use std::collections::HashMap;
+use bitcoin::Config;
 
 pub fn start(
     block_headers_bytes: Arc<Mutex<Vec<u8>>>,
-    host: String,
-    username: String,
-    password: Option<String>,
+    config: &Config,
 ) {
     let start = Instant::now();
 
@@ -26,9 +25,7 @@ pub fn start(
     loop {
         let r = bitcoin::rpc::get_block_header(
             block_hash.clone(),
-            host.clone(),
-            username.clone(),
-            password.clone(),
+            &config,
         );
         match r {
             Ok(block_header_rpc_response) => {
