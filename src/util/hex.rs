@@ -28,18 +28,7 @@ static CHARS: &'static [u8] = b"0123456789abcdef";
 
 impl ToHex for [u8] {
     /// Turn a vector of `u8` bytes into a hexadecimal string.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// extern crate rustc_serialize;
-    /// use rustc_serialize::hex::ToHex;
-    ///
-    /// fn main () {
-    ///     let str = [52,32].to_hex();
-    ///     println!("{}", str);
-    /// }
-    /// ```
+
     fn to_hex(&self) -> String {
         let mut v = Vec::with_capacity(self.len() * 2);
         for &byte in self.iter() {
@@ -106,22 +95,6 @@ impl FromHex for str {
     /// You can use the `String::from_utf8` function to turn a
     /// `Vec<u8>` into a string with characters corresponding to those values.
     ///
-    /// # Example
-    ///
-    /// This converts a string literal to hexadecimal and back.
-    ///
-    /// ```rust
-    /// extern crate rustc_serialize;
-    /// use rustc_serialize::hex::{FromHex, ToHex};
-    ///
-    /// fn main () {
-    ///     let hello_str = "Hello, World".as_bytes().to_hex();
-    ///     println!("{}", hello_str);
-    ///     let bytes = hello_str.from_hex().unwrap();
-    ///     println!("{:?}", bytes);
-    ///     let result_str = String::from_utf8(bytes).unwrap();
-    ///     println!("{}", result_str);
-    /// }
     /// ```
     fn from_hex(&self) -> Result<Vec<u8>, FromHexError> {
         // This may be an overestimate if there is any whitespace
